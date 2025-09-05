@@ -1,0 +1,294 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id             Int      @id @default(autoincrement())
+    identifier     String   @unique @default(uuid())
+    email          String   @unique
+    password       String
+    userType       UserType @default(ADMIN)
+    administrators Administrators[]
+    doctor         Doctor[]
+    patients       Patient[]
+    reception      Reception[]
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+    @@index([id, identifier, email])
+}
+
+enum UserType {
+    ADMIN
+    PATIENT
+    DOCTOR
+    RECEPTION
+    MASTER
+}
+
+model City {
+    id          Int      @id @default(autoincrement())
+    name        String
+    stateId     Int
+    state       State    @relation(fields: [stateId], references: [id])
+    address     Address[]
+    @@index([stateId, name])
+}
+
+model State {
+    id          Int      @id @default(autoincrement())
+    name        String
+    uf          String  @unique
+    city        City[]
+    address     Address[]
+    @@index([uf, name])
+}
+
+model Address {
+    id             Int      @id @default(autoincrement())
+    street         String
+    number         String
+    complement     String?
+    neighborhood   String
+    cityId         Int
+    city           City     @relation(fields: [cityId], references: [id])
+    stateId        Int
+    state          State    @relation(fields: [stateId], references: [id])
+    zipCode        String
+    company        Company[]
+    administrators Administrators[]
+    doctor         Doctor[]
+    patient        Patient[]
+    reception      Reception[]
+    createdAt      DateTime @default(now())
+    updatedAt      DateTime @updatedAt
+    @@index([id, cityId, stateId])
+}
+
+model Company {
+    id                 Int      @id @default(autoincrement())
+    identifier         String   @unique @default(uuid())
+    corporateName      String
+    tradeName          String
+    cnpj               String   @unique
+    inscricaoEstadual  String?
+    inscricaoMunicipal String?
+    phone              String?
+    email              String?
+    website            String?
+    addressId          Int
+    address            Address  @relation(fields: [addressId], references: [id])
+    status             Status   @default(PENDING)
+    administrators     Administrators[]
+    patients           Patient[]
+    reception          Reception[]
+    doctor             Doctor[]
+    products           Product[]
+    productTemporary   ProductTemporary[]
+    productTypes       ProductType[]
+    productCompounds   ProductCompounds[]
+    createdAt          DateTime @default(now())
+    updatedAt          DateTime @updatedAt
+    @@index([id, cnpj, corporateName, tradeName, status])
+}
+
+enum Status {
+    ACTIVE
+    INACTIVE
+    PENDING
+}
+
+model Administrators {
+    id           Int      @id @default(autoincrement())
+    identifier   String   @unique @default(uuid())
+    userId       Int
+    user         User     @relation(fields: [userId], references: [id])
+    companyId    Int
+    company      Company  @relation(fields: [companyId], references: [id])
+    name         String
+    cpf          String   @unique
+    dateOfBirth  DateTime
+    gender       String?
+    phone        String?
+    observations String?
+    status       Status   @default(ACTIVE)
+    addressId    Int
+    address      Address  @relation(fields: [addressId], references: [id])
+    createdAt                   DateTime @default(now())
+    updatedAt                   DateTime @updatedAt
+    @@index([id, userId, companyId])
+}
+
+model Doctor {
+    id                          Int      @id @default(autoincrement())
+    identifier                  String   @unique @default(uuid())
+    name                        String
+    cpf                         String   @unique
+    documentDoctorType          DocumentDoctorType @default(CRM)
+    documentDoctorNumber        String?  @unique
+    documentDoctorUf            String?
+    phone                       String?
+    observations                String?
+    userId                      Int
+    user                        User     @relation(fields: [userId], references: [id])
+    companyId                   Int
+    company                     Company  @relation(fields: [companyId], references: [id])
+    status                      Status   @default(ACTIVE)
+    addressId                   Int
+    address                     Address  @relation(fields: [addressId], references: [id])
+    patients                    Patient[]
+    prescriptions               Prescription[]
+    createdAt                   DateTime @default(now())
+    updatedAt                   DateTime @updatedAt
+    @@index([id, identifier, phone, userId, documentDoctorType, documentDoctorNumber, documentDoctorUf])
+}
+
+enum DocumentDoctorType {
+    CRM
+    CRMV
+}
+
+model Patient {
+    id                          Int      @id @default(autoincrement())
+    identifier                  String   @unique @default(uuid())
+    name                        String
+    cpf                         String   @unique
+    dateOfBirth                 DateTime
+    gender                      String?
+    phone                       String?
+    observations                String?
+    userId                      Int
+    user                        User     @relation(fields: [userId], references: [id])
+    companyId                   Int
+    company                     Company  @relation(fields: [companyId], references: [id])
+    doctorId                    Int
+    doctor                      Doctor   @relation(fields: [doctorId], references: [id])
+    addressId                   Int
+    address                     Address  @relation(fields: [addressId], references: [id])
+    status                      Status   @default(ACTIVE)
+    prescriptions               Prescription[]
+    createdAt                   DateTime @default(now())
+    updatedAt                   DateTime @updatedAt
+    @@index([id, identifier, cpf, name, phone, status, userId, companyId, doctorId])
+}
+
+model Reception {
+    id                          Int      @id @default(autoincrement())
+    identifier                  String   @unique @default(uuid())
+    name                        String
+    cpf                         String   @unique
+    dateOfBirth                 DateTime
+    gender                      String?
+    phone                       String?
+    observations                String?
+    status                      Status   @default(ACTIVE)
+    addressId                   Int
+    address                     Address  @relation(fields: [addressId], references: [id])
+    userId                      Int
+    user                        User     @relation(fields: [userId], references: [id])
+    companyId                   Int
+    company                     Company  @relation(fields: [companyId], references: [id])
+    @@index([id, identifier, cpf, name, phone, userId, companyId, status])
+}
+
+model ProductType {
+    id                          Int      @id @default(autoincrement())
+    name                        String
+    unit_measure                String
+    status                      Status   @default(ACTIVE)
+    companyId                   Int
+    company                     Company  @relation(fields: [companyId], references: [id])
+    prescriptionPermissions     PrescriptionPermission[]
+    products                    Product[]
+    @@index([id, name, unit_measure, status])
+}
+
+model ProductCompounds {
+    id                          Int      @id @default(autoincrement())
+    name                        String   @unique
+    description                 String?
+    status                      Status   @default(ACTIVE)
+    companyId                   Int
+    company                     Company  @relation(fields: [companyId], references: [id])
+    prescriptionPermissions     PrescriptionPermission[]
+    products                    Product[]
+    @@index([id, name, description, status])
+}
+
+model Prescription {
+    id                          Int      @id @default(autoincrement())
+    identifier                  String   @unique @default(uuid())
+    patientId                   Int
+    patient                     Patient  @relation(fields: [patientId], references: [id])
+    doctorId                    Int
+    doctor                      Doctor   @relation(fields: [doctorId], references: [id])
+    prescriptionDate            DateTime
+    validityDays                Int
+    uploadedAt                  DateTime @default(now())
+    linkPrescription            String?
+    disease                     String?
+    observations                String?
+    status                      Status   @default(ACTIVE)
+    prescriptionPermissions     PrescriptionPermission[]
+    createdAt                   DateTime @default(now())
+    updatedAt                   DateTime @updatedAt
+    @@index([id, identifier, patientId, doctorId, prescriptionDate, status])
+}
+
+model PrescriptionPermission {
+    id                          Int      @id @default(autoincrement())
+    prescriptionId              Int
+    prescription                Prescription @relation(fields: [prescriptionId], references: [id])
+    productCompoundsId          Int
+    productCompounds            ProductCompounds @relation(fields: [productCompoundsId], references: [id])
+    productTypeId               Int
+    productType                 ProductType @relation(fields: [productTypeId], references: [id])
+    monthlyLimit                Int
+    allowed                     Boolean @default(true)
+    createdAt                   DateTime @default(now())
+    updatedAt                   DateTime @updatedAt
+    @@index([id, prescriptionId, productCompoundsId, productTypeId, allowed, monthlyLimit])
+}
+
+model Product {
+    id                          Int      @id @default(autoincrement())
+    identifier                  String   @unique @default(uuid())
+    name                        String
+    price                       Float
+    quantity                    Int
+    description                 String?
+    image_url                   String?
+    productTypeId               Int
+    productType                 ProductType @relation(fields: [productTypeId], references: [id])
+    productCompoundId           Int
+    productCompound             ProductCompounds @relation(fields: [productCompoundId], references: [id])
+    status                      Status   @default(ACTIVE)
+    companyId                   Int
+    company                     Company  @relation(fields: [companyId], references: [id])
+    createdAt                   DateTime @default(now())
+    updatedAt                   DateTime @updatedAt
+    @@index([id, identifier, name, status, description, productTypeId])
+}
+
+model ProductTemporary {
+    id                          Int      @id @default(autoincrement())
+    identifier                  String   @unique @default(uuid())
+    name                        String
+    price                       Float
+    quantity                    Int
+    description                 String?
+    image_url                   String?
+    productType                 String
+    unitMeasure                 String
+    productCompound             String
+    status                      Status   @default(ACTIVE)
+    companyId                   Int
+    company                     Company  @relation(fields: [companyId], references: [id])
+    createdAt                   DateTime @default(now())
+    updatedAt                   DateTime @updatedAt
+    @@index([id, identifier, name, status, description, productType, unitMeasure, productCompound])
+}
